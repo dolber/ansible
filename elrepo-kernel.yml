@@ -1,0 +1,7 @@
+- hosts: webhost-centos
+  roles:
+    - role: linuxhq.elrepo
+      elrepo_kernel_install: True
+      elrepo_kernel_version: ml
+      elrepo_repos:
+        elrepo: True

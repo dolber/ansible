@@ -1,0 +1,76 @@
+- hosts: all
+
+  vars:
+
+    mysql:
+      databases:
+        alex:
+          state: present
+        test123:
+          state: present
+      users:
+        alex:
+          pass: test123
+          host: '%'
+          priv: '*.*:ALL'
+          state: present
+      create_user_and_db:
+        alex1234:
+          pass: alex1234
+        alex111:
+          pass: test
+        alex321:
+          pass: test1
+
+  tasks:
+
+    - name: Removes all anonymous user accounts
+      mysql_user:
+        name: ''
+        host_all: yes
+        state: absent
+
+#    - name: create mysql databases
+#      mysql_db:
+#        name: "{{ item.key }}"
+#        state: "{{ item.value.state }}"
+#      with_dict: "{{ mysql['databases'] }}"
+#
+#    - name: create mysql users
+#      mysql_user:
+#        name: "{{ item.key }}"
+#        host: "{{ item.value.host }}"
+#        password: "{{ item.value.pass }}"
+#        priv: "{{ item.value.priv }}"
+#        state: "{{ item.value.state }}"
+#      with_dict: "{{ mysql['users'] }}"
+
+    - name: create mysql users
+      mysql_user:
+        name: "{{ item.key }}"
+        host: '%'
+        password: "{{ item.value.pass }}"
+        priv: "{{ item.key }}.*:ALL"
+        state: 'present'
+      with_dict: "{{ mysql['create_user_and_db'] }}"
+
+    - name: create mysql db
+      mysql_db:
+        name: "{{ item.key }}"
+        state: 'present'
+      with_dict: "{{ mysql['create_user_and_db'] }}"
+
+
+#    # Removes all anonymous user accounts
+#    - mysql_user:
+#        name: ''
+#        host_all: yes
+#        state: absent
+#
+#    # Create database user with name 'bob' and password '12345' with all database privileges
+#    - mysql_user:
+#        name={{ item }}
+#        password="test"
+#        priv='.*:ALL'
+#        state=present
+#      with_items: "{{ mysql_users }}"

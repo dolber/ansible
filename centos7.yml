@@ -1,0 +1,235 @@
+---
+- hosts: all
+
+  vars:
+    remove_php_enable: false
+    php56_enable: true
+    php_default_enable: false
+    common_packages_enable: false
+    SERVER_NEW_PASSWORD: "$6$dfkA9pzrtLaW4HSd$AZPuvnaNERY676FZwL2MDYM7.oVMu6fIOce8qA9jDnCLwBXJAuPSvg3Tv9mMV9dSybmarU97hQYzNCZMoLBSv/"
+    # "yeesh4oV"
+    elrepo_rpm : elrepo-release-7.0-2.el7.elrepo.noarch.rpm
+    elrepo_mirror : http://www.elrepo.org
+    elrepo_timeout_seconds : 600
+    elrepo_url : '{{elrepo_mirror}}/{{elrepo_rpm}}'
+    SERVER_public_keys:
+      - ~/.ssh/id_rsa.pub
+
+    centos_common_required_packages:
+      - epel-release
+      - wget
+      - gcc
+      - lynx
+      - vim
+      - ncurses-devel
+      - screen
+      - tmux
+      - net-snmp
+      - gcc-c++
+      - flex
+      - bison
+      - byacc
+      - vim-enhanced
+      - telnet
+      - zlib-devel
+      - net-snmp-devel
+      - net-snmp-utils
+      - sysstat
+      - rrdtool
+      - rrdtool-perl
+      - perl-libwww-perl
+      - perl-FCGI
+      - perl-IO-All
+      - apr-devel
+      - sendmail-cf
+      - ncurses-devel
+      - net-snmp
+      - perl-Crypt-SSLeay
+      - perl-Net-SSLeay
+      - bind
+      - bind-libs
+      - bind-utils
+      - bind-chroot
+      - caching-nameserver
+      - vsftpd
+      - pcre-devel
+      - openssl-devel
+      - GeoIP-devel
+      - make
+      - ntp
+      - fuse-sshfs
+      - fuse-devel
+      - fuse
+      - gcc
+      - pcre-devel
+      - openssl-devel
+      - zip
+      - unzip
+      - curl
+      - perl-Time-HiRes
+      - perl-Crypt-OpenSSL-RSA
+      - perl-Crypt-OpenSSL-Random
+      - perl-Net-SSLeay
+      - mailx
+      - mutt
+      - mod_ssl
+      - libpcap-devel
+      - jwhois
+      - ftp
+      - rsync
+      - OpenIPMI-devel
+      - nginx
+      - qt
+      - bzip2
+      - monit
+      - boost-devel
+      - scons
+      - readline-devel
+      - js-devel
+      - pptp
+      - pptpd
+      - device-mapper
+      - vnstat
+      - munin
+      - munin-node
+      - iotop
+      - pciutils
+      - dmidecode
+      - ld-linux.so.2
+      - patch
+      - atop
+      - duplicity
+      - backupninja
+      - python-paramiko.noarch
+      - rdiff-backup
+      - lftp
+      - man
+      - smartmontools
+      - lm_sensors
+      - cyrus-sasl-plain
+      - 3proxy
+      - perl-Net-SNMP.noarch
+      - bridge-utils
+      - dovecot
+      # - libqt-mt
+      # - secpwgen
+      # - chkrootkit
+      # - rar
+      # - netpipe
+      # - squirrelmail
+      # - fuse-hpafs
+      # - truecrypt
+      # - dkms-fuse
+
+
+    centos_php56w_packages:
+      - php56w-devel
+      - php56w-mysql
+      - php56w-common
+      - php56w-pear
+      - php56w-cli
+      - php56w-gd
+      - php56w-xml
+      - php56w-pdo
+      - php56w-mbstring
+      - httpd-devel
+      - geoip-devel
+      - GeoIP-data
+      - geoip
+      - php56w-mcrypt
+      - php56w-cli
+      - php56w-common
+      - php56w-opcache
+      - libmcrypt
+      # - phpmyadmin
+
+
+    centos_php_packages:
+      - php-devel
+      - php-mysql
+      - php-common
+      - php-pear
+      - php-cli
+      - php-gd
+      - php-xml
+      - php-pdo
+      - php-mbstring
+      - httpd-devel
+      - geoip-devel
+      - GeoIP-data
+      - geoip
+      - php-mcrypt
+      - php-cli
+      - php-common
+      - libmcrypt
+      # - phpmyadmin
+
+    mariadb_packages:
+      - mariadb-devel
+      - mariadb
+      - mariadb-libs
+      - mariadb-server
+
+    services_autostart:
+      - httpd
+      - mariadb
+
+  tasks:
+
+    - name: Change root password
+      user:
+        name=root
+        password="{{ SERVER_NEW_PASSWORD }}"
+
+    - name: install packages
+      yum: name={{ item }} state=present
+      with_items: "{{ centos_common_required_packages }}"
+      when:
+        - ansible_os_family == 'RedHat'
+        - common_packages_enable
+
+    - name: remove php* packages
+      yum:
+        name: 'php*'
+        state: absent
+      when:
+        - remove_php_enable
+
+    - name: install php56w packages
+      yum: name={{ item }} state=present
+      with_items: "{{ centos_php56w_packages and mariadb_packages }}"
+      when:
+        - ansible_os_family == 'RedHat'
+        - php56_enable == True
+
+    - name: install default php packages
+      yum: name={{ item }} state=present
+      with_items: "{{ centos_php_packages }}"
+      when:
+        - ansible_os_family == 'RedHat'
+        - php_default_enable == True
+
+    # yum upgrade
+    - name: upgrade all packages
+      yum:
+        name: '*'
+        state: latest
+      when: ansible_os_family == 'RedHat'
+
+
+    - name: enable services and ensure it is not masked
+      systemd: name={{ item }} enabled=yes masked=no
+      with_items: "{{ services_autostart }}"
+
+    - name: Make sure a services is running
+      # systemd: state=started name=httpd
+      systemd: name={{ item }} state=started
+      with_items: "{{ services_autostart }}"
+
+# centos_common_required_packages
+#
+#    - name: Set up authorized_keys
+#      SERVER_public_keys: >
+#        user=root
+#        key={{ SERVER_public_keys }}
+#        exclusive=True
